@@ -12,12 +12,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(500).json({ error: 'GEMINI_API_KEY is not configured' });
     }
 
+    const payload: any = {
+      contents,
+    };
+
+    if (toolConfig) {
+      if (toolConfig.systemInstruction) {
+        payload.systemInstruction = {
+          parts: [{ text: toolConfig.systemInstruction }]
+        };
+      }
+      if (toolConfig.tools) {
+        payload.tools = toolConfig.tools;
+      }
+    }
+
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
     
     const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents, ...toolConfig })
+        body: JSON.stringify(payload)
     });
     
     if (!response.ok) {
