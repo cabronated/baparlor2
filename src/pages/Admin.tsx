@@ -4,6 +4,7 @@ import { loginWithGoogle, logout } from '../lib/firebase';
 import AdminInquiries from '../components/admin/AdminInquiries';
 import AdminServices from '../components/admin/AdminServices';
 import AdminPackages from '../components/admin/AdminPackages';
+import AdminCategories from '../components/admin/AdminCategories';
 import AdminSettings from '../components/admin/AdminSettings';
 import AdminImages from '../components/admin/AdminImages';
 import AdminPackageBuilder from '../components/admin/AdminPackageBuilder';
@@ -59,6 +60,7 @@ export default function Admin() {
               {[
                 { id: 'ai-assistant', label: '✨ AI Assistant' },
                 { id: 'services', label: 'Manage Services' },
+                { id: 'categories', label: 'Manage Categories' },
                 { id: 'packages', label: 'Premium Packages' },
                 { id: 'builder', label: 'Custom Builder Settings' },
                 { id: 'images', label: 'Global Images' },
@@ -82,6 +84,7 @@ export default function Admin() {
             {activeTab === 'ai-assistant' && <AdminAIChat />}
             {activeTab === 'inquiries' && <AdminInquiries />}
             { activeTab === 'services' && <AdminServices /> }
+            { activeTab === 'categories' && <AdminCategories /> }
             { activeTab === 'packages' && <AdminPackages /> }
             { activeTab === 'builder' && <AdminPackageBuilder /> }
             { activeTab === 'images' && <AdminImages /> }

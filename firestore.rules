@@ -6,6 +6,11 @@ service cloud.firestore {
       return request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
+    match /categories/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }                
+    
     match /services/{document=**} {
       allow read: if true;
       allow write: if isAdmin();

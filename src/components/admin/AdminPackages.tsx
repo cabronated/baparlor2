@@ -1,6 +1,6 @@
 import type React from 'react';
 import { useState, useEffect } from 'react';
-import { collection, query, getDocs, deleteDoc, doc, addDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, getDocs, deleteDoc, doc, addDoc, updateDoc, orderBy } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { Edit2, Trash2, Plus, X, Check } from 'lucide-react';
 
@@ -11,14 +11,20 @@ export default function AdminPackages() {
   const [currentPackage, setCurrentPackage] = useState<any>(null);
   const [newService, setNewService] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const fetchPackages = async () => {
     setLoading(true);
-    const q = query(collection(db, 'packages'));
+    const q = query(collection(db, 'packages'), orderBy('sequence', 'asc'));
     const snapshot = await getDocs(q);
     setPackages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     setLoading(false);
   };
+
+  const filteredPackages = packages.filter(pkg => 
+    pkg.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    pkg.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   useEffect(() => {
     fetchPackages();
@@ -37,6 +43,7 @@ export default function AdminPackages() {
         ...currentPackage,
         price: Number(currentPackage.price) || 0,
         originalPrice: Number(currentPackage.originalPrice) || 0,
+        sequence: Number(currentPackage.sequence) || 0,
         updatedAt: Date.now()
       });
     } else {
@@ -44,6 +51,7 @@ export default function AdminPackages() {
         ...currentPackage,
         price: Number(currentPackage.price) || 0,
         originalPrice: Number(currentPackage.originalPrice) || 0,
+        sequence: Number(currentPackage.sequence) || 0,
         createdAt: Date.now(),
         updatedAt: Date.now()
       });
@@ -90,6 +98,10 @@ export default function AdminPackages() {
             <div>
               <label className="block text-xs uppercase tracking-widest text-brand-black/60 mb-2">Package Price (₹)</label>
               <input type="number" required value={currentPackage.price || ''} onChange={e => setCurrentPackage({...currentPackage, price: e.target.value})} className="w-full border-b border-brand-black/20 p-2 focus:outline-none focus:border-brand-gold bg-transparent" />
+            </div>
+            <div>
+              <label className="block text-xs uppercase tracking-widest text-brand-black/60 mb-2">Sequence Order</label>
+              <input type="number" value={currentPackage.sequence || 0} onChange={e => setCurrentPackage({...currentPackage, sequence: e.target.value})} className="w-full border-b border-brand-black/20 p-2 focus:outline-none focus:border-brand-gold bg-transparent" />
             </div>
           </div>
           <div>
@@ -140,14 +152,21 @@ export default function AdminPackages() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-xl font-serif">Premium Packages</h3>
+        <input 
+          type="text" 
+          placeholder="Search packages..." 
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="border-b border-brand-black/20 p-2 focus:outline-none focus:border-brand-gold bg-transparent text-sm w-64"
+        />
         <button onClick={() => { setCurrentPackage({ services: [] }); setIsEditing(true); }} className="flex items-center gap-2 bg-brand-gold text-brand-ivory px-4 py-2 uppercase text-[10px] tracking-widest hover:bg-brand-black transition-colors">
           <Plus className="w-4 h-4" /> Add Package
         </button>
       </div>
       
-      {packages.length === 0 ? (
+      {filteredPackages.length === 0 ? (
         <div className="bg-brand-ivory/50 p-10 text-center text-brand-black/50 border border-brand-black/5">
-          No packages found. Click 'Add Package' to create one.
+          {packages.length === 0 ? "No packages found." : "No packages match your search."}
         </div>
       ) : (
         <div className="grid grid-cols-1 overflow-hidden border border-brand-black/10 bg-white">
@@ -158,8 +177,8 @@ export default function AdminPackages() {
             <div className="col-span-2">Tags</div>
             <div className="col-span-2 text-right">Actions</div>
           </div>
-          {packages.map((pkg, i) => (
-            <div key={pkg.id} className={`grid grid-cols-12 gap-4 p-4 items-center ${i !== packages.length - 1 ? 'border-b border-brand-black/5' : ''} hover:bg-brand-ivory/10 transition-colors`}>
+          {filteredPackages.map((pkg, i) => (
+            <div key={pkg.id} className={`grid grid-cols-12 gap-4 p-4 items-center ${i !== filteredPackages.length - 1 ? 'border-b border-brand-black/5' : ''} hover:bg-brand-ivory/10 transition-colors`}>
               <div className="col-span-3 font-serif text-lg">{pkg.title}</div>
               <div className="col-span-3 text-sm font-light truncate pr-4">{pkg.description}</div>
               <div className="col-span-2 flex flex-col">

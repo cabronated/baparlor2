@@ -123,11 +123,26 @@ const deletePackage: FunctionDeclaration = {
   }
 };
 
+const updateItemSequence: FunctionDeclaration = {
+  name: "updateItemSequence",
+  description: "Update the sequence (order) of a service or package.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      collection: { type: Type.STRING, description: "Must be 'services', 'packages' or 'categories'" },
+      id: { type: Type.STRING, description: "The unique ID of the item" },
+      sequence: { type: Type.NUMBER, description: "The new sequence order" }
+    },
+    required: ["collection", "id", "sequence"]
+  }
+};
+
 const tools = [
   {
     functionDeclarations: [
       listServices, addService, updateService, deleteService,
-      listPackages, addPackage, updatePackage, deletePackage
+      listPackages, addPackage, updatePackage, deletePackage,
+      updateItemSequence
     ]
   }
 ];
@@ -201,6 +216,13 @@ export default function AdminAIChat() {
             updatedAt: Date.now()
           });
           return { success: true, message: "Package updated successfully" };
+        }
+        case 'updateItemSequence': {
+          await updateDoc(doc(db, call.args.collection, call.args.id), {
+            sequence: call.args.sequence,
+            updatedAt: Date.now()
+          });
+          return { success: true, message: "Item sequence updated successfully" };
         }
         case 'deletePackage': {
           await deleteDoc(doc(db, 'packages', call.args.id));

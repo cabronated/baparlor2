@@ -10,6 +10,7 @@
         "description": { "type": "string", "description": "Short description of the service" },
         "startingPrice": { "type": "number", "description": "Starting price in INR" },
         "imageUrl": { "type": "string", "description": "URL to the image" },
+        "sequence": { "type": "number", "description": "Sequence order for display" },
         "createdAt": { "type": "number", "description": "Timestamp" },
         "updatedAt": { "type": "number", "description": "Timestamp" }
       },
@@ -52,10 +53,21 @@
         "description": { "type": "string" },
         "price": { "type": "number" },
         "services": { "type": "array", "items": { "type": "string" } },
+        "sequence": { "type": "number", "description": "Sequence order for display" },
         "createdAt": { "type": "number" },
         "updatedAt": { "type": "number" }
       },
       "required": ["title", "price", "createdAt", "updatedAt"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Category for services",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "sequence": { "type": "number", "description": "Sequence order for display" }
+      },
+      "required": ["name", "sequence"]
     },
     "Inquiry": {
       "title": "Inquiry",
