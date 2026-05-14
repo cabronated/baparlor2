@@ -8,9 +8,11 @@ import AdminSettings from '../components/admin/AdminSettings';
 import AdminImages from '../components/admin/AdminImages';
 import AdminPackageBuilder from '../components/admin/AdminPackageBuilder';
 
+import AdminAIChat from '../components/admin/AdminAIChat';
+
 export default function Admin() {
   const { user, isAdmin, loading } = useAuth();
-  const [activeTab, setActiveTab] = useState('services');
+  const [activeTab, setActiveTab] = useState('ai-assistant');
 
   if (loading) return <div className="pt-40 text-center pb-20">Loading...</div>;
 
@@ -55,6 +57,7 @@ export default function Admin() {
             
             <nav className="flex flex-col border-l border-brand-black/10 pl-6 space-y-6">
               {[
+                { id: 'ai-assistant', label: '✨ AI Assistant' },
                 { id: 'services', label: 'Manage Services' },
                 { id: 'packages', label: 'Premium Packages' },
                 { id: 'builder', label: 'Custom Builder Settings' },
@@ -76,6 +79,7 @@ export default function Admin() {
 
           {/* Main Content */}
           <div className="flex-grow">
+            {activeTab === 'ai-assistant' && <AdminAIChat />}
             {activeTab === 'inquiries' && <AdminInquiries />}
             { activeTab === 'services' && <AdminServices /> }
             { activeTab === 'packages' && <AdminPackages /> }
