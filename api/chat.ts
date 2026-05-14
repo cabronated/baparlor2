@@ -7,11 +7,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { contents, toolConfig } = req.body;
-    const response = await fetch("https://generativeai.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + process.env.GEMINI_API_KEY, {
+    
+    if (!process.env.GEMINI_API_KEY) {
+        return res.status(500).json({ error: 'GEMINI_API_KEY is not configured' });
+    }
+
+    const response = await fetch(`https://generativeai.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ contents, ...toolConfig })
     });
+    
+    if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Google API Error:', errorText);
+        return res.status(response.status).json({ error: 'Failed to communicate with AI', details: errorText });
+    }
+    
     const data = await response.json();
     res.json(data);
   } catch(e) {
