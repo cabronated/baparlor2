@@ -294,56 +294,55 @@ export default function AdminAIChat() {
         parts: [{ text: userMessage }]
       });
 
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: historyParts,
-          toolConfig: {
-            systemInstruction: "You are a specialized Admin Assistant for 'Beauty Attraction Parlor'. You can manage services and packages using the provided tools. Always be polite, professional, and concise. When listing items, use a clean format. When an action is successful, confirm it clearly. If you delete something, mention exactly what was deleted.",
-            tools: tools
-          }
-        })
-      });
+      let currentHistory = [...historyParts];
 
-      const data = await response.json();
-      
+      const sendToAI = async (history: any[]) => {
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: history,
+            toolConfig: {
+              systemInstruction: {
+                parts: [{ text: "You are a specialized Admin Assistant for 'Beauty Attraction Parlor'. You can manage services and packages using the provided tools. Always be polite, professional, and concise. When listing items, use a clean format. When an action is successful, confirm it clearly. If you delete something, mention exactly what was deleted." }]
+              },
+              tools: tools
+            }
+          })
+        });
+        if (!response.ok) throw new Error("AI request failed");
+        return response.json();
+      };
+
+      let data = await sendToAI(currentHistory);
       let responseContent = data.candidates[0].content;
-      let finalContent = "";
       
       // Handle potentially multiple rounds of tool calls
-      while (responseContent.parts?.some((p: any) => p.functionCall)) {
+      let maxTurns = 10;
+      while (responseContent.parts?.some((p: any) => p.functionCall) && maxTurns > 0) {
+        maxTurns--;
         const toolResponses = [];
         const functionCalls = responseContent.parts.filter((p: any) => p.functionCall).map((p: any) => p.functionCall);
         
+        currentHistory.push(responseContent);
+
         for (const call of functionCalls) {
           const result = await handleToolCall(call);
           toolResponses.push({
             functionResponse: {
               name: call.name,
-              response: result,
-              id: call.id
+              response: result
             }
           });
         }
 
-        // Send results back to model (via proxy again - need to refactor proxy to handle this or send entire history)
-        const nextResponse = await fetch("/api/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contents: [...historyParts, responseContent, { parts: toolResponses }],
-              toolConfig: {
-                systemInstruction: "You are a specialized Admin Assistant for 'Beauty Attraction Parlor'.",
-                tools: tools
-              }
-            })
-          });
-          const nextData = await nextResponse.json();
-          responseContent = nextData.candidates[0].content;
+        currentHistory.push({ parts: toolResponses });
+        
+        data = await sendToAI(currentHistory);
+        responseContent = data.candidates[0].content;
       }
 
-      finalContent = responseContent.parts?.[0]?.text || "I've processed your request.";
+      const finalContent = responseContent.parts?.[0]?.text || "I've processed your request.";
       setMessages(prev => [...prev, { role: 'assistant', content: finalContent }]);
 
     } catch (error: any) {
