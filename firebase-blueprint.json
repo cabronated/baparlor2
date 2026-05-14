@@ -1,0 +1,110 @@
+{
+  "entities": {
+    "Service": {
+      "title": "Service",
+      "description": "A beauty service offered by the salon",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Name of the service (e.g., Haircut)" },
+        "category": { "type": "string", "description": "Category (e.g., Hair Services, Makeup Services)" },
+        "description": { "type": "string", "description": "Short description of the service" },
+        "startingPrice": { "type": "number", "description": "Starting price in INR" },
+        "imageUrl": { "type": "string", "description": "URL to the image" },
+        "createdAt": { "type": "number", "description": "Timestamp" },
+        "updatedAt": { "type": "number", "description": "Timestamp" }
+      },
+      "required": ["name", "category", "createdAt", "updatedAt"]
+    },
+    "Content": {
+      "title": "Content",
+      "description": "Global website content",
+      "type": "object",
+      "properties": {
+        "heroTitle": { "type": "string" },
+        "heroSubtitle": { "type": "string" },
+        "aboutText": { "type": "string" },
+        "phone1": { "type": "string" },
+        "phone2": { "type": "string" },
+        "whatsapp": { "type": "string" },
+        "address": { "type": "string" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["updatedAt"]
+    },
+    "GalleryImage": {
+      "title": "Gallery Image",
+      "description": "An image for the gallery",
+      "type": "object",
+      "properties": {
+        "url": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["url", "createdAt"]
+    },
+    "PricingPackage": {
+      "title": "Pricing Package",
+      "description": "A beauty package",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "services": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["title", "price", "createdAt", "updatedAt"]
+    },
+    "Inquiry": {
+      "title": "Inquiry",
+      "description": "Customer inquiry",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "service": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["name", "phone", "createdAt"]
+    },
+    "Admin": {
+      "title": "Admin",
+      "description": "An admin user",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["email", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/services/{serviceId}": {
+      "schema": { "$ref": "#/entities/Service" },
+      "description": "Collection of all services"
+    },
+    "/global/content": {
+      "schema": { "$ref": "#/entities/Content" },
+      "description": "Global website content"
+    },
+    "/gallery/{imageId}": {
+      "schema": { "$ref": "#/entities/GalleryImage" },
+      "description": "Collection of gallery images"
+    },
+    "/packages/{packageId}": {
+      "schema": { "$ref": "#/entities/PricingPackage" },
+      "description": "Collection of pricing packages"
+    },
+    "/inquiries/{inquiryId}": {
+      "schema": { "$ref": "#/entities/Inquiry" },
+      "description": "Customer inquiries"
+    },
+    "/admins/{uid}": {
+      "schema": { "$ref": "#/entities/Admin" },
+      "description": "Collection of admin users"
+    }
+  }
+}
