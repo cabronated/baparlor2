@@ -303,9 +303,7 @@ export default function AdminAIChat() {
           body: JSON.stringify({
             contents: history,
             toolConfig: {
-              systemInstruction: {
-                parts: [{ text: "You are a specialized Admin Assistant for 'Beauty Attraction Parlor'. You can manage services and packages using the provided tools. Always be polite, professional, and concise. When listing items, use a clean format. When an action is successful, confirm it clearly. If you delete something, mention exactly what was deleted." }]
-              },
+              systemInstruction: "You are a specialized Admin Assistant for 'Beauty Attraction Parlor'. You can manage services and packages using the provided tools. Always be polite, professional, and concise. When listing items, use a clean format. When an action is successful, confirm it clearly. If you delete something, mention exactly what was deleted.",
               tools: tools
             }
           })
