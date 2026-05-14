@@ -22,7 +22,8 @@ const addService: FunctionDeclaration = {
       name: { type: Type.STRING, description: "Name of the service" },
       category: { type: Type.STRING, description: "Category (e.g., Skin & Beauty, Hair Services, Makeup Services, Nail Services)" },
       description: { type: Type.STRING, description: "Detailed description of what the service includes" },
-      startingPrice: { type: Type.NUMBER, description: "Starting price in INR (optional)" }
+      startingPrice: { type: Type.NUMBER, description: "Starting price in INR (optional)" },
+      excludeFromCombo: { type: Type.BOOLEAN, description: "If true, this service will not be eligible for multi-service discounts in the package builder." }
     },
     required: ["name", "category", "description"]
   }
@@ -41,7 +42,8 @@ const updateService: FunctionDeclaration = {
           name: { type: Type.STRING },
           category: { type: Type.STRING },
           description: { type: Type.STRING },
-          startingPrice: { type: Type.NUMBER }
+          startingPrice: { type: Type.NUMBER },
+          excludeFromCombo: { type: Type.BOOLEAN }
         }
       }
     },
@@ -137,12 +139,24 @@ const updateItemSequence: FunctionDeclaration = {
   }
 };
 
+const deduplicateItems: FunctionDeclaration = {
+  name: "deduplicateItems",
+  description: "Identify and remove duplicate entries in a specific collection.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      collection: { type: Type.STRING, description: "The collection to clean (services, packages, or categories)" }
+    },
+    required: ["collection"]
+  }
+};
+
 const tools = [
   {
     functionDeclarations: [
       listServices, addService, updateService, deleteService,
       listPackages, addPackage, updatePackage, deletePackage,
-      updateItemSequence
+      updateItemSequence, deduplicateItems
     ]
   }
 ];
@@ -223,6 +237,29 @@ export default function AdminAIChat() {
             updatedAt: Date.now()
           });
           return { success: true, message: "Item sequence updated successfully" };
+        }
+        case 'deduplicateItems': {
+          const colName = call.args.collection;
+          const snapshot = await getDocs(collection(db, colName));
+          const all = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
+          const seen = new Set();
+          const toDelete: string[] = [];
+          
+          all.forEach(item => {
+              let key = "";
+              if (colName === 'services') key = `${item.name.toLowerCase().trim()}_${item.category.toLowerCase().trim()}`;
+              else if (colName === 'packages') key = item.title.toLowerCase().trim();
+              else if (colName === 'categories') key = item.name.toLowerCase().trim();
+              
+              if (seen.has(key)) {
+                  toDelete.push(item.id);
+              } else {
+                  seen.add(key);
+              }
+          });
+          
+          await Promise.all(toDelete.map(id => deleteDoc(doc(db, colName, id))));
+          return { success: true, count: toDelete.length, message: `Removed ${toDelete.length} duplicates from ${colName}` };
         }
         case 'deletePackage': {
           await deleteDoc(doc(db, 'packages', call.args.id));

@@ -22,6 +22,7 @@ interface Service {
   name: string;
   category: string;
   startingPrice?: number;
+  excludeFromCombo?: boolean;
 }
 
 const FADE_UP = {
@@ -37,6 +38,7 @@ const STAGGER = {
 export default function Packages() {
   const [packages, setPackages] = useState<PremiumPackage[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
   const [builderConfig, setBuilderConfig] = useState({
@@ -60,9 +62,10 @@ export default function Packages() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [pkgSnap, srvSnap, builderSnap] = await Promise.all([
+        const [pkgSnap, srvSnap, catSnap, builderSnap] = await Promise.all([
           getDocs(query(collection(db, 'packages'))),
           getDocs(query(collection(db, 'services'))),
+          getDocs(query(collection(db, 'categories'))),
           getDoc(doc(db, 'global', 'builder'))
         ]);
         
@@ -71,6 +74,10 @@ export default function Packages() {
         
         const srvs = srvSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service));
         setServices(srvs);
+
+        const cats = catSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        cats.sort((a: any, b: any) => (a.sequence || 0) - (b.sequence || 0));
+        setCategories(cats);
 
         if (builderSnap.exists()) {
           setBuilderConfig({ ...builderConfig, ...builderSnap.data() as any });
@@ -118,28 +125,40 @@ export default function Packages() {
 
   const builderSummary = useMemo(() => {
     const selected = services.filter(s => selectedServices.includes(s.id));
-    const totalPrice = selected.reduce((sum, s) => sum + (s.startingPrice || 0), 0);
-    const count = selected.length;
+    const eligibleServices = selected.filter(s => !s.excludeFromCombo);
+    const excludedServices = selected.filter(s => s.excludeFromCombo);
+    
+    const eligiblePrice = eligibleServices.reduce((sum, s) => sum + (s.startingPrice || 0), 0);
+    const excludedPrice = excludedServices.reduce((sum, s) => sum + (s.startingPrice || 0), 0);
+    const totalPrice = eligiblePrice + excludedPrice;
+    
+    const count = eligibleServices.length;
     
     let discountPercent = 0;
     if (count >= builderConfig.tier3Count) discountPercent = builderConfig.tier3DiscountPercent;
     else if (count >= builderConfig.tier2Count) discountPercent = builderConfig.tier2DiscountPercent;
     else if (count >= builderConfig.tier1Count) discountPercent = builderConfig.tier1DiscountPercent;
 
-    const discountAmount = Math.round(totalPrice * (discountPercent / 100));
+    const discountAmount = Math.round(eligiblePrice * (discountPercent / 100));
     const finalPrice = totalPrice - discountAmount;
 
     return {
       selected,
+      eligibleServices,
+      excludedServices,
       totalPrice,
-      count,
+      count, // eligible count
       discountPercent,
       discountAmount,
       finalPrice
     };
   }, [selectedServices, services, builderConfig]);
 
-  const uniqueCategories = Array.from(new Set(services.map(s => s.category))).filter(Boolean);
+  const serviceCategories = Array.from(new Set(services.map(s => s.category))).filter(Boolean) as string[];
+  const displayCategories = [
+    ...categories.map(c => c.name),
+    ...serviceCategories.filter(sc => !categories.some(c => c.name === sc))
+  ];
 
   const defaultImage = "https://images.unsplash.com/photo-1562322140-8baeececf3df?q=80&w=800&auto=format&fit=crop";
 
@@ -253,7 +272,7 @@ export default function Packages() {
                 <div className="flex flex-col lg:flex-row gap-12 lg:gap-20">
                   {/* Service Selection */}
                   <div className="w-full lg:w-2/3 space-y-12">
-                    {uniqueCategories.map(category => {
+                    {displayCategories.map(category => {
                       const catServices = services.filter(s => s.category === category);
                       if (catServices.length === 0) return null;
                       return (
@@ -283,7 +302,12 @@ export default function Packages() {
                                     </div>
                                     <div>
                                       <div className={`text-sm ${isSelected ? 'font-medium' : 'font-light'}`}>{service.name}</div>
-                                      <div className="text-xs text-brand-black/50 mt-1">₹{service.startingPrice || '-'}</div>
+                                      <div className="flex items-center gap-2">
+                                        <div className="text-xs text-brand-black/50 mt-1">₹{service.startingPrice || '-'}</div>
+                                        {service.excludeFromCombo && (
+                                          <span className="text-[8px] uppercase tracking-tighter text-brand-black/30 font-medium px-1 border border-brand-black/5 mt-1">Excluded</span>
+                                        )}
+                                      </div>
                                     </div>
                                   </div>
                                 </button>
@@ -309,7 +333,10 @@ export default function Packages() {
                           <div className="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
                             {builderSummary.selected.map(s => (
                               <div key={s.id} className="flex justify-between text-sm font-light items-start gap-4">
-                                <span>{s.name}</span>
+                                <div className="flex flex-col">
+                                  <span>{s.name}</span>
+                                  {s.excludeFromCombo && <span className="text-[9px] text-brand-black/40 italic">Excluded from combo discount</span>}
+                                </div>
                                 <span className="text-brand-black/60">₹{s.startingPrice || '-'}</span>
                               </div>
                             ))}

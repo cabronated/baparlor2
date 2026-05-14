@@ -10,6 +10,7 @@
         "description": { "type": "string", "description": "Short description of the service" },
         "startingPrice": { "type": "number", "description": "Starting price in INR" },
         "imageUrl": { "type": "string", "description": "URL to the image" },
+        "excludeFromCombo": { "type": "boolean", "description": "If true, this service will not affect the package builder discount logic" },
         "sequence": { "type": "number", "description": "Sequence order for display" },
         "createdAt": { "type": "number", "description": "Timestamp" },
         "updatedAt": { "type": "number", "description": "Timestamp" }

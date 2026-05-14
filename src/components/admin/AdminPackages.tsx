@@ -40,10 +40,12 @@ export default function AdminPackages() {
     await fetchPackages();
   };
 
-  const filteredPackages = packages.filter(pkg => 
-    pkg.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    pkg.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredPackages = packages.filter(pkg => {
+    const title = pkg.title || '';
+    const description = pkg.description || '';
+    return title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+           description.toLowerCase().includes(searchQuery.toLowerCase());
+  }).sort((a, b) => (a.sequence || 0) - (b.sequence || 0));
 
   useEffect(() => {
     fetchPackages();

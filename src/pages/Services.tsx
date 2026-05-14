@@ -13,39 +13,41 @@ interface Service {
 
 export default function Services() {
   const [services, setServices] = useState<Service[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchServices = async () => {
+    const fetchData = async () => {
       try {
-        const q = query(collection(db, 'services'));
-        const snapshot = await getDocs(q);
-        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service));
-        setServices(data);
+        const [srvSnap, catSnap] = await Promise.all([
+          getDocs(query(collection(db, 'services'))),
+          getDocs(query(collection(db, 'categories')))
+        ]);
+        
+        const srvData = srvSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service));
+        setServices(srvData);
+        
+        const catData = catSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        catData.sort((a: any, b: any) => (a.sequence || 0) - (b.sequence || 0));
+        setCategories(catData);
       } catch (error) {
         handleFirestoreError(error, OperationType.LIST, 'services');
       } finally {
         setLoading(false);
       }
     };
-    fetchServices();
+    fetchData();
   }, []);
 
-  // Priority order for categories
-  const priorityOrder = ['Skin & Beauty', 'Hair Services', 'Makeup Services', 'Nail Services'];
+  // Priority order fallback and unique categories check
+  const serviceCategories = Array.from(new Set(services.map(s => s.category))).filter(Boolean) as string[];
   
-  // Extract unique categories from fetched services
-  const uniqueCategories = Array.from(new Set(services.map(s => s.category))).filter(Boolean) as string[];
-  
-  // Sort categories according to priority Order, then alphabetical for the rest
-  const sortedCategories = uniqueCategories.sort((a, b) => {
-    const indexA = priorityOrder.indexOf(a);
-    const indexB = priorityOrder.indexOf(b);
-    if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-    if (indexA !== -1) return -1;
-    if (indexB !== -1) return 1;
-    return a.localeCompare(b);
-  });
+  // Create final list of categories to display:
+  // Use defined categories first, then any extra ones found in services
+  const displayCategories = [
+    ...categories.map(c => c.name),
+    ...serviceCategories.filter(sc => !categories.some(c => c.name === sc))
+  ];
 
   const STAGGER = {
     hidden: { opacity: 0 },
@@ -71,8 +73,9 @@ export default function Services() {
           <div className="text-center py-20 text-brand-black/60 tracking-widest uppercase text-sm">No services found. Please check back later.</div>
         ) : (
           <div className="space-y-32">
-            {sortedCategories.map((cat, i) => {
+            {displayCategories.map((cat, i) => {
               const catServices = services.filter(s => s.category === cat);
+              if (catServices.length === 0) return null;
 
               return (
                 <motion.div 

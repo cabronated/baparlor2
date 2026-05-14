@@ -23,7 +23,10 @@ export default function AdminServices() {
     
     const [snapshotServices, snapshotCategories] = await Promise.all([getDocs(qServices), getDocs(qCategories)]);
     
-    setServices(snapshotServices.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    // Sort services by sequence locally since we removed orderBy temporarily to avoid index issues if they aren't created yet
+    const srvs = snapshotServices.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    srvs.sort((a: any, b: any) => (a.sequence || 0) - (b.sequence || 0));
+    setServices(srvs);
     
     // If no categories in DB, initialize with defaults
     if (snapshotCategories.empty) {
@@ -37,10 +40,32 @@ export default function AdminServices() {
     setLoading(false);
   };
   
-  const filteredServices = services.filter(service => 
-    service.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    service.category.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const deduplicateServices = async () => {
+    setLoading(true);
+    const snapshot = await getDocs(collection(db, 'services'));
+    const all = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
+    const seen = new Set();
+    const toDelete: any[] = [];
+    
+    all.forEach(srv => {
+        const key = `${srv.name.toLowerCase().trim()}_${srv.category.toLowerCase().trim()}`;
+        if (seen.has(key)) {
+            toDelete.push(srv.id);
+        } else {
+            seen.add(key);
+        }
+    });
+    
+    await Promise.all(toDelete.map(id => deleteDoc(doc(db, 'services', id))));
+    await fetchServices();
+  };
+  
+  const filteredServices = services.filter(service => {
+    const name = service.name || '';
+    const category = service.category || '';
+    return name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+           category.toLowerCase().includes(searchQuery.toLowerCase());
+  });
 
   useEffect(() => {
     fetchServices();
@@ -62,6 +87,7 @@ export default function AdminServices() {
         category: catToSave,
         startingPrice: Number(currentService.startingPrice) || null,
         sequence: Number(currentService.sequence) || 0,
+        excludeFromCombo: !!currentService.excludeFromCombo,
         updatedAt: Date.now()
       });
     } else {
@@ -70,6 +96,7 @@ export default function AdminServices() {
         category: catToSave,
         startingPrice: Number(currentService.startingPrice) || null,
         sequence: Number(currentService.sequence) || 0,
+        excludeFromCombo: !!currentService.excludeFromCombo,
         createdAt: Date.now(),
         updatedAt: Date.now()
       });
@@ -131,6 +158,16 @@ export default function AdminServices() {
               <label className="block text-xs uppercase tracking-widest text-brand-black/60 mb-2">Sequence Order</label>
               <input type="number" value={currentService.sequence || 0} onChange={e => setCurrentService({...currentService, sequence: e.target.value})} className="w-full border-b border-brand-black/20 p-2 focus:outline-none focus:border-brand-gold bg-transparent" />
             </div>
+            <div className="flex items-center gap-2 pt-6">
+              <input 
+                type="checkbox" 
+                id="excludeFromCombo" 
+                checked={currentService.excludeFromCombo || false} 
+                onChange={e => setCurrentService({...currentService, excludeFromCombo: e.target.checked})}
+                className="w-4 h-4 accent-brand-gold"
+              />
+              <label htmlFor="excludeFromCombo" className="text-xs uppercase tracking-widest text-brand-black/60 cursor-pointer">Exclude from Multi-Service Discount</label>
+            </div>
           </div>
           <div>
             <label className="block text-xs uppercase tracking-widest text-brand-black/60 mb-2">Description</label>
@@ -149,16 +186,21 @@ export default function AdminServices() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-xl font-serif">All Services</h3>
-        <input 
-          type="text" 
-          placeholder="Search services..." 
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="border-b border-brand-black/20 p-2 focus:outline-none focus:border-brand-gold bg-transparent text-sm w-64"
-        />
-        <button onClick={() => { setCurrentService({ category: predefinedCategories[0] }); setIsEditing(true); }} className="flex items-center gap-2 bg-brand-gold text-brand-ivory px-4 py-2 uppercase text-[10px] tracking-widest hover:bg-brand-black transition-colors">
-          <Plus className="w-4 h-4" /> Add Service
-        </button>
+        <div className="flex gap-2">
+          <button onClick={deduplicateServices} className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">
+            <Trash2 className="w-4 h-4" /> Deduplicate
+          </button>
+          <input 
+            type="text" 
+            placeholder="Search services..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="border-b border-brand-black/20 p-2 focus:outline-none focus:border-brand-gold bg-transparent text-sm w-64"
+          />
+          <button onClick={() => { setCurrentService({ category: predefinedCategories[0] }); setIsEditing(true); }} className="flex items-center gap-2 bg-brand-gold text-brand-ivory px-4 py-2 uppercase text-[10px] tracking-widest hover:bg-brand-black transition-colors">
+            <Plus className="w-4 h-4" /> Add Service
+          </button>
+        </div>
       </div>
       
       {filteredServices.length === 0 ? (
@@ -175,7 +217,10 @@ export default function AdminServices() {
           </div>
           {filteredServices.map((service, i) => (
             <div key={service.id} className={`grid grid-cols-12 gap-4 p-4 items-center ${i !== filteredServices.length - 1 ? 'border-b border-brand-black/5' : ''} hover:bg-brand-ivory/10 transition-colors`}>
-              <div className="col-span-4 font-serif text-lg">{service.name}</div>
+              <div className="col-span-4 flex flex-col">
+                <span className="font-serif text-lg">{service.name}</span>
+                {service.excludeFromCombo && <span className="text-[9px] uppercase tracking-tighter text-brand-black/40 font-medium italic">Excluded from Combo Discounts</span>}
+              </div>
               <div className="col-span-3 text-sm font-light">{service.category}</div>
               <div className="col-span-2 text-sm text-brand-gold">₹{service.startingPrice || '-'}</div>
               <div className="col-span-3 flex justify-end gap-3">
