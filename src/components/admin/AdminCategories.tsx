@@ -19,7 +19,7 @@ export default function AdminCategories() {
   const deduplicateCategories = async () => {
     setLoading(true);
     const snapshot = await getDocs(collection(db, 'categories'));
-    const all = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const all = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
     const seen = new Set();
     const toDelete: any[] = [];
     

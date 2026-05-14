@@ -18,7 +18,7 @@ export default function AdminServices() {
 
   const fetchServices = async () => {
     setLoading(true);
-    const qServices = query(collection(db, 'services'), orderBy('sequence', 'asc'));
+    const qServices = query(collection(db, 'services'));
     const qCategories = query(collection(db, 'categories'), orderBy('sequence', 'asc'));
     
     const [snapshotServices, snapshotCategories] = await Promise.all([getDocs(qServices), getDocs(qCategories)]);

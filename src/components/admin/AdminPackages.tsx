@@ -15,10 +15,29 @@ export default function AdminPackages() {
 
   const fetchPackages = async () => {
     setLoading(true);
-    const q = query(collection(db, 'packages'), orderBy('sequence', 'asc'));
+    const q = query(collection(db, 'packages'));
     const snapshot = await getDocs(q);
     setPackages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     setLoading(false);
+  };
+
+  const deduplicatePackages = async () => {
+    setLoading(true);
+    const snapshot = await getDocs(collection(db, 'packages'));
+    const all = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
+    const seen = new Set();
+    const toDelete: any[] = [];
+    
+    all.forEach(pkg => {
+        if (seen.has(pkg.title)) {
+            toDelete.push(pkg.id);
+        } else {
+            seen.add(pkg.title);
+        }
+    });
+    
+    await Promise.all(toDelete.map(id => deleteDoc(doc(db, 'packages', id))));
+    await fetchPackages();
   };
 
   const filteredPackages = packages.filter(pkg => 
@@ -152,16 +171,21 @@ export default function AdminPackages() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-xl font-serif">Premium Packages</h3>
-        <input 
-          type="text" 
-          placeholder="Search packages..." 
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="border-b border-brand-black/20 p-2 focus:outline-none focus:border-brand-gold bg-transparent text-sm w-64"
-        />
-        <button onClick={() => { setCurrentPackage({ services: [] }); setIsEditing(true); }} className="flex items-center gap-2 bg-brand-gold text-brand-ivory px-4 py-2 uppercase text-[10px] tracking-widest hover:bg-brand-black transition-colors">
-          <Plus className="w-4 h-4" /> Add Package
-        </button>
+        <div className="flex gap-2">
+          <button onClick={deduplicatePackages} className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 uppercase text-[10px] tracking-widest hover:bg-red-700 transition-colors">
+            <Trash2 className="w-4 h-4" /> Deduplicate
+          </button>
+          <input 
+            type="text" 
+            placeholder="Search packages..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="border-b border-brand-black/20 p-2 focus:outline-none focus:border-brand-gold bg-transparent text-sm w-64"
+          />
+          <button onClick={() => { setCurrentPackage({ services: [] }); setIsEditing(true); }} className="flex items-center gap-2 bg-brand-gold text-brand-ivory px-4 py-2 uppercase text-[10px] tracking-widest hover:bg-brand-black transition-colors">
+            <Plus className="w-4 h-4" /> Add Package
+          </button>
+        </div>
       </div>
       
       {filteredPackages.length === 0 ? (
